@@ -95,8 +95,7 @@ class GoogleChart extends Widget
         $jsData = Json::encode($this->data);
         $jsOptions = Json::encode($this->options);
 
-        $script = '
-			google.setOnLoadCallback(drawChart' . $id . ');
+        $script = 'google.setOnLoadCallback(drawChart' . $id . ');
 			var ' . $id . '=null;
 			function drawChart' . $id . '() {
 				var data = google.visualization.arrayToDataTable(' . $jsData . ');
@@ -107,8 +106,51 @@ class GoogleChart extends Widget
 
 				' . $id . ' = new google.visualization.' . $this->visualization . '(document.getElementById("' . $this->containerId . '"));
 				' . $id . '.draw(data, options);
-			}';
-
+				
+				var columns = [];
+				    var series = {};
+				    for (var i = 0; i < data.getNumberOfColumns(); i++) {
+				        columns.push(i);
+				        if (i > 0) {
+				            series[i - 1] = {};
+				        }
+				    }
+				    
+				    
+				    
+				    google.visualization.events.addListener(' . $id . ', "select", function () {
+				        var sel = ' . $id . '.getSelection();
+				        // if selection length is 0, we deselected an element
+				        if (sel.length > 0) {
+				            // if row is undefined, we clicked on the legend
+				            if (sel[0].row == null) {
+				                var col = sel[0].column;
+				                if (columns[col] == col) {
+				                    // hide the data series
+				                    columns[col] = {
+				                        label: data.getColumnLabel(col),
+				                        type: data.getColumnType(col),
+				                        calc: function () {
+				                            return null;
+				                        }
+				                    };
+				                    
+				                    // grey out the legend entry
+				                    series[col - 1].color = "#CCCCCC";
+				                }
+				                else {
+				                    // show the data series
+				                    columns[col] = col;
+				                    series[col - 1].color = null;
+				                }
+				                var view = new google.visualization.DataView(data);
+				                view.setColumns(columns);
+				                ' . $id . '.draw(view, options);
+				            }
+				        }
+				    });
+      
+      }';
         $view = $this->getView();
         $view->registerJsFile('https://www.google.com/jsapi',['position' => View::POS_HEAD]);
         $view->registerJs('google.load("visualization", "' . $this->loadVersion . '", {packages:["' . $this->packages . '"]});', View::POS_HEAD, __CLASS__ . '#' . $id);
